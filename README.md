@@ -2,6 +2,57 @@
 
 Python app to evaluate incident-response agents against YAML test cases and produce JSON, Markdown, and HTML score dashboards.
 
+## Architecture
+
+### End-to-end flow
+
+```mermaid
+flowchart TD
+    A["test_cases.yaml"] --> B["run_eval.py (orchestrator)"]
+    B --> C["test_case_loader.py"]
+    C --> D["TestCase objects"]
+    B --> E["agent_runner.py"]
+    E --> F["DemoAgentRunner or SubprocessAgentRunner"]
+    F --> G["AgentOutput"]
+    G --> H["judge_model.py"]
+    H --> I["CaseEvaluation"]
+    I --> J["metrics.py"]
+    J --> K["reporting.py"]
+    K --> L["report.json"]
+    K --> M["report.md"]
+    K --> N["dashboard.html"]
+```
+
+### Component communication contract
+
+```mermaid
+sequenceDiagram
+    participant CLI as run_eval.py
+    participant Loader as test_case_loader.py
+    participant Runner as agent_runner.py
+    participant Agent as your_agent.py (subprocess)
+    participant Judge as judge_model.py
+    participant Metrics as metrics.py
+    participant Report as reporting.py
+
+    CLI->>Loader: load_test_cases(cases_path)
+    Loader-->>CLI: list[TestCase]
+    loop each test case
+        CLI->>Runner: run_case(TestCase)
+        alt subprocess mode
+            Runner->>Agent: stdin JSON payload (case.to_payload())
+            Agent-->>Runner: stdout JSON {response, tool_calls, cost_usd}
+        end
+        Runner-->>CLI: AgentOutput
+        CLI->>Judge: evaluate_case(TestCase, AgentOutput)
+        Judge-->>CLI: CaseEvaluation
+    end
+    CLI->>Metrics: aggregate_results(all CaseEvaluation)
+    Metrics-->>CLI: summary
+    CLI->>Report: write_report_artifacts(report)
+    Report-->>CLI: paths to json/md/html
+```
+
 ## What it includes
 
 - `test_cases.yaml`: sample cases for incident triage, root cause detection, and log analysis
@@ -40,3 +91,11 @@ llm-eval --runner subprocess --command "python3 path/to/your_agent.py" --model-n
 
 Reports are written into `reports/<timestamp>/`.
 
+## Next roadmap
+
+- Phase 1 (Near term): Add multi-model comparison mode in one run (`--model` repeated flags) and leaderboard output in dashboard.
+- Phase 1 (Near term): Replace heuristic judge with optional LLM-as-a-judge backend (DeepEval) while keeping deterministic fallback.
+- Phase 2 (Mid term): Integrate LangSmith tracing for each case run and link trace URLs in `report.json`.
+- Phase 2 (Mid term): Add TruLens feedback functions for faithfulness and safety risk scoring.
+- Phase 3 (Later): Add CI mode (`--fail-threshold`) to block merges when accuracy drops or hallucination rises.
+- Phase 3 (Later): Add scenario packs and regression snapshots for incident domains (payments, auth, infra, data pipeline).
