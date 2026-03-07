@@ -1,0 +1,70 @@
+test_cases:
+  - id: cpu-spike-triage
+    category: incident triage
+    scenario: CPU spike on the payments API after a deployment
+    prompt: >
+      Investigate the incident, identify the likely root cause, and recommend the
+      next remediation step for the on-call engineer.
+    expected:
+      - label: detect root cause
+        keywords: [cpu, deployment, inefficient, query]
+      - label: propose fix
+        keywords: [rollback, optimize, query]
+      - label: cite evidence
+        keywords: [metrics, logs]
+    expected_tools: [metrics_api, deploy_history, log_search]
+    allowed_tools: [metrics_api, deploy_history, log_search, incident_kb]
+    max_latency_ms: 4000
+    context:
+      root_cause: An inefficient SQL query shipped in the latest deployment saturated CPU.
+      remediation: Roll back the deployment and patch the query before re-release.
+      evidence:
+        - CPU usage jumped immediately after deployment.
+        - Slow-query logs show the new query dominating database time.
+
+  - id: db-lock-contention
+    category: root cause detection
+    scenario: Elevated checkout latency with intermittent 500 errors
+    prompt: >
+      Determine the most probable root cause from the available telemetry and
+      propose the safest fix.
+    expected:
+      - label: detect lock contention
+        keywords: [database, lock, contention]
+      - label: isolate trigger
+        keywords: [batch, job, write]
+      - label: propose safe mitigation
+        keywords: [pause, batch, scale, replica]
+    expected_tools: [metrics_api, log_search, job_scheduler]
+    allowed_tools: [metrics_api, log_search, job_scheduler, incident_kb]
+    max_latency_ms: 4500
+    context:
+      root_cause: A recurring batch write job is causing database lock contention.
+      remediation: Pause the batch job and shift read traffic to replicas while tuning writes.
+      evidence:
+        - Latency spikes align with the hourly batch schedule.
+        - Error logs show lock wait timeout exceptions.
+
+  - id: auth-error-log-analysis
+    category: log analysis
+    scenario: Users cannot sign in after a secrets rotation
+    prompt: >
+      Analyze the incident logs, explain the probable cause, and recommend the
+      immediate recovery action.
+    expected:
+      - label: identify config mismatch
+        keywords: [secret, token, mismatch]
+      - label: explain evidence
+        keywords: [logs, auth, invalid]
+      - label: propose recovery action
+        keywords: [revert, rotate, restart]
+    expected_tools: [log_search, secret_manager]
+    allowed_tools: [log_search, secret_manager, deploy_history]
+    max_latency_ms: 3500
+    context:
+      root_cause: Authentication services use mismatched signing secrets after rotation.
+      remediation: Revert to the previous secret or complete the rotation and restart auth pods.
+      evidence:
+        - Logs contain repeated invalid signature errors.
+        - Secret version changed minutes before login failures began.
+
