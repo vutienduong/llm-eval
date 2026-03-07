@@ -1,127 +1,127 @@
-# Video Script: Gioi thieu LLM Eval Framework (10-15 phut)
+# Video Script: Introducing the LLM Eval Framework (10-15 Minutes)
 
-## 1) Muc tieu video
+## 1) Video goals
 
-- Gioi thieu bai toan: AI agent tra loi hay nhung kho do do tin cay.
-- Trinh bay cach app nay danh gia reliability theo test case incident.
-- Demo chay that va doc ket qua dashboard.
-- Ket thuc bang roadmap va call-to-action.
+- Explain the core problem: AI agents can sound good but still be unreliable.
+- Show how this app evaluates reliability with structured incident test cases.
+- Run a live demo and review the dashboard output.
+- Close with roadmap and a clear call-to-action.
 
-## 2) Doi tuong nguoi xem
+## 2) Target audience
 
-- AI engineer, backend engineer, SRE, PM ky thuat.
-- Da biet co ban ve LLM/agent, can framework de danh gia chat luong.
+- AI engineers, backend engineers, SREs, and technical PMs.
+- People with basic LLM/agent knowledge who need a practical quality framework.
 
-## 3) Tong thoi luong de xuat
+## 3) Suggested duration
 
-- Tong: 12 phut (co the dao dong 10-15 phut).
+- Total: 12 minutes (flexible range: 10-15 minutes).
 
-## 4) Timeline chi tiet + loi thoai mau
+## 4) Detailed timeline + sample narration
 
 ### 0:00 - 0:45 | Hook
 
-Noi:
-"Ban co mot AI agent tra loi rat tu tin, nhung moi lan production gap su co thi ket qua lai khong on dinh. Video nay minh se cho ban mot framework nho gon de do duoc do tin cay cua agent: do accuracy, hallucination rate, tool correctness, latency, va cost."
+Narration:
+"You might have an AI agent that sounds very confident, but once incidents happen in production, quality becomes inconsistent. In this video, I will show a lightweight framework to measure agent reliability with clear metrics: accuracy, hallucination rate, tool correctness, latency, and cost."
 
-Hinh anh:
-- Cat nhanh 2-3 man hinh: log incident, output agent, dashboard score.
+Visuals:
+- Fast cuts of 2-3 screens: incident logs, agent output, score dashboard.
 
-### 0:45 - 2:00 | Bai toan va huong giai quyet
+### 0:45 - 2:00 | Problem and approach
 
-Noi:
-"Van de lon nhat khong phai agent tra loi sai 100%, ma la sai khong du doan duoc. Vi vay, minh can bo test co cau truc va metric ro rang. App nay dung file YAML test case, chay agent, cho judge cham diem, tong hop thanh report."
+Narration:
+"The hardest part is not always being wrong. It is being unpredictably wrong. So we need structured tests and explicit metrics. This app uses YAML test cases, runs an agent, scores outputs with a judge, and generates reports."
 
-Hinh anh:
-- Mo `prd.md`, highlight architecture.
-- Chuyen sang `README.md` section Architecture.
+Visuals:
+- Open `prd.md` and highlight the architecture.
+- Switch to the Architecture section in `README.md`.
 
-### 2:00 - 3:30 | Kien truc va giao tiep component
+### 2:00 - 3:30 | Architecture and component communication
 
-Noi:
-"Flow chay rat thang: test_cases -> runner -> output -> judge -> metrics -> dashboard. Diem can chu y la contract giao tiep voi agent subprocess: framework gui payload JSON vao stdin va nhan JSON qua stdout."
+Narration:
+"The execution flow is straightforward: test cases -> runner -> output -> judge -> metrics -> dashboard. The key integration detail is the subprocess contract: the framework sends JSON on stdin and expects JSON on stdout."
 
-Hinh anh:
-- Scroll 2 so do Mermaid trong README.
-- Zoom vao phan contract `response`, `tool_calls`, `cost_usd`.
+Visuals:
+- Scroll through the 2 Mermaid diagrams in README.
+- Zoom in on the `response`, `tool_calls`, `cost_usd` contract.
 
-### 3:30 - 5:00 | Walkthrough code nhanh
+### 3:30 - 5:00 | Quick code walkthrough
 
-Noi:
-"`run_eval.py` la orchestrator. `agent_runner.py` co 2 che do: demo va subprocess. `judge_model.py` cham theo tieu chi ky vong + tool call + hallucination heuristic + latency. Sau do `metrics.py` aggregate va `reporting.py` xuat JSON, Markdown, HTML."
+Narration:
+"`run_eval.py` orchestrates the pipeline. `agent_runner.py` supports demo and subprocess modes. `judge_model.py` scores expected criteria, tool usage, hallucination heuristic, and latency. Then `metrics.py` aggregates and `reporting.py` exports JSON, Markdown, and HTML."
 
-Hinh anh:
-- Lan luot mo:
+Visuals:
+- Open these files in order:
   - `run_eval.py`
   - `agent_runner.py`
   - `judge_model.py`
   - `reporting.py`
 
-### 5:00 - 7:30 | Demo chay thuc te
+### 5:00 - 7:30 | Live demo
 
-Noi:
-"Bay gio minh chay demo runner de thay pipeline end-to-end."
+Narration:
+"Now I will run the demo runner to show the end-to-end flow."
 
-Terminal commands de quay:
+Terminal commands:
 
 ```bash
 source .venv/bin/activate
 llm-eval --cases test_cases.yaml --output-dir reports/video-demo
 ```
 
-Noi tiep:
-"Lenh da evaluate 3 case va tao 3 artifact: report.json, report.md, dashboard.html."
+Follow-up narration:
+"The command evaluates 3 cases and produces 3 artifacts: `report.json`, `report.md`, and `dashboard.html`."
 
-Hinh anh:
-- Hien output command.
-- Mo `reports/video-demo/dashboard.html`.
+Visuals:
+- Show terminal output.
+- Open `reports/video-demo/dashboard.html`.
 
-### 7:30 - 9:30 | Doc ket qua dashboard
+### 7:30 - 9:30 | Reading the dashboard
 
-Noi:
-"O day minh xem nhanh Overall score, Accuracy, Hallucination, Tool correctness va latency. O bang Case Results, minh thay case nao cham thap de debug prompt hoac tool-use logic."
+Narration:
+"Here I look at overall score, accuracy, hallucination, tool correctness, and latency. In Case Results, I can identify weak cases and debug either prompt quality or tool-use behavior."
 
-Hinh anh:
-- Scroll dashboard:
+Visuals:
+- Scroll dashboard sections:
   - Hero KPI cards
   - Category scores
   - Case results
   - Integration readiness (LangSmith/DeepEval/TruLens)
 
-### 9:30 - 11:00 | Cai nay dung trong team nhu the nao
+### 9:30 - 11:00 | How teams can use this
 
-Noi:
-"Trong team, ban co the dung framework nay nhu quality gate: moi lan doi prompt hoac doi model, chay bo test nay truoc khi release. Neu score roi xuong nguong, dung merge."
+Narration:
+"A team can use this as a quality gate. Every prompt or model change should run this suite before release. If the score drops below threshold, stop the merge."
 
-Hinh anh:
-- Mo `test_cases.yaml` va giai thich cach them case moi.
-- Minh hoa 1 case "CPU spike".
+Visuals:
+- Open `test_cases.yaml` and explain how to add a new case.
+- Highlight the "CPU spike" scenario as an example.
 
-### 11:00 - 12:00 | Roadmap va ket
+### 11:00 - 12:00 | Roadmap and close
 
-Noi:
-"Ban roadmap tiep theo gom: multi-model benchmark, LLM judge backend, trace voi LangSmith, feedback voi TruLens, va CI fail threshold. Neu ban muon, minh co the lam tiep phan so sanh nhieu model trong 1 lan chay."
+Narration:
+"Next roadmap includes multi-model benchmark mode, LLM judge backend, LangSmith traces, TruLens feedback, and CI fail thresholds. If you want, I can build part 2: real agent integration via subprocess plus CI gating."
 
-Hinh anh:
-- Mo section "Next roadmap" trong README.
-- Outro with repo tree.
+Visuals:
+- Open the `Next roadmap` section in README.
+- Outro with repository tree.
 
-## 5) Shot list (quay nhanh)
+## 5) Shot list (quick production)
 
-- Shot A: talking head 20-30 giay de mo bai.
-- Shot B: screen record README architecture.
-- Shot C: code walkthrough split-screen.
-- Shot D: terminal run command.
-- Shot E: dashboard deep dive.
-- Shot F: closing CTA.
+- Shot A: Talking head intro (20-30 seconds).
+- Shot B: Screen recording of README architecture.
+- Shot C: Split-screen quick code walkthrough.
+- Shot D: Terminal demo run.
+- Shot E: Dashboard deep dive.
+- Shot F: Closing CTA.
 
-## 6) CTA de xuat
+## 6) Suggested CTA
 
-- "Comment model ban muon benchmark."
-- "Neu can, minh se lam phan 2: ket noi agent that qua subprocess + CI gating."
+- "Comment which model you want to benchmark next."
+- "If useful, I will publish part 2: real subprocess agent integration + CI gating."
 
-## 7) Ghi chu san xuat
+## 7) Production notes
 
-- Keep pace nhanh, 1 y chinh moi 30-45 giay.
-- Moi khi doi section, hien lower-third title.
-- Khi demo terminal, zoom font lon de de doc.
-- Uu tien 1080p, 30fps, audio sach.
+- Keep pace fast: one key idea every 30-45 seconds.
+- Show a lower-third title at each section transition.
+- Use larger terminal font when running commands.
+- Prefer 1080p, 30fps, clean audio.
