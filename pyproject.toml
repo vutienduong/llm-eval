@@ -15,3 +15,14 @@ llm-eval = "run_eval:main"
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+py-modules = [
+  "agent_runner",
+  "integrations",
+  "judge_model",
+  "metrics",
+  "models",
+  "reporting",
+  "run_eval",
+  "test_case_loader",
+]
