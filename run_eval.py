@@ -27,6 +27,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
             "Use NAME=COMMAND to override command per model in subprocess mode."
         ),
     )
+    parser.add_argument(
+        "--judge",
+        default="heuristic",
+        choices=["heuristic", "deepeval"],
+        help="Judge backend. deepeval falls back to heuristic when unavailable.",
+    )
     parser.add_argument("--project-name", default="LLM Eval Framework", help="Project label for the dashboard")
     parser.add_argument("--output-dir", help="Directory to write report artifacts")
     return parser
@@ -96,7 +102,7 @@ def main() -> int:
         )
         for case in cases:
             output = runner.run_case(case)
-            results.append(evaluate_case(case, output))
+            results.append(evaluate_case(case, output, judge_backend=args.judge))
 
     summary = aggregate_results(results)
     report = build_report_payload(
@@ -110,6 +116,7 @@ def main() -> int:
     artifacts = write_report_artifacts(report, output_dir)
 
     print(f"Evaluated {summary['total_cases']} case-runs across {summary['total_models']} model(s).")
+    print(f"Requested judge backend: {args.judge}")
     print(f"Overall score: {summary['overall']['overall_score']:.4f}")
     if summary.get("leaderboard"):
         best = summary["leaderboard"][0]

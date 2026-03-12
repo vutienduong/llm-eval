@@ -48,6 +48,7 @@ def aggregate_results(results: list[CaseEvaluation]) -> dict[str, Any]:
             "overall": {},
             "by_category": {},
             "by_model": {},
+            "by_judge_backend": {},
             "leaderboard": [],
         }
 
@@ -63,9 +64,11 @@ def aggregate_results(results: list[CaseEvaluation]) -> dict[str, Any]:
 
     by_category_rows: dict[str, list[CaseEvaluation]] = defaultdict(list)
     by_model_rows: dict[str, list[CaseEvaluation]] = defaultdict(list)
+    by_judge_backend: dict[str, int] = defaultdict(int)
     for result in results:
         by_category_rows[result.category].append(result)
         by_model_rows[result.model_name].append(result)
+        by_judge_backend[result.judge_backend] += 1
 
     by_model = {key: build_bucket(rows) for key, rows in sorted(by_model_rows.items())}
     return {
@@ -74,5 +77,6 @@ def aggregate_results(results: list[CaseEvaluation]) -> dict[str, Any]:
         "overall": build_bucket(results),
         "by_category": {key: build_bucket(rows) for key, rows in sorted(by_category_rows.items())},
         "by_model": by_model,
+        "by_judge_backend": dict(sorted(by_judge_backend.items())),
         "leaderboard": _build_leaderboard(by_model),
     }

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import math
 import re
+from typing import Any
 
 from models import AgentOutput, CaseEvaluation, Expectation, TestCase
 
@@ -117,17 +119,89 @@ def _latency_score(latency_ms: float, max_latency_ms: int) -> float:
     return max(0.0, 1.0 - overflow_ratio)
 
 
-def evaluate_case(case: TestCase, output: AgentOutput) -> CaseEvaluation:
+def _build_expected_text(case: TestCase) -> str:
+    lines = []
+    for item in case.expected:
+        keyword_text = ", ".join(item.keywords) if item.keywords else "none"
+        lines.append(f"- {item.label}: {keyword_text}")
+    return "\n".join(lines)
+
+
+def _score_with_deepeval(case: TestCase, output: AgentOutput) -> tuple[float, float, list[str]]:
+    from deepeval.metrics import GEval
+    from deepeval.test_case import LLMTestCase, LLMTestCaseParams
+
+    context_blob = json.dumps(case.context, ensure_ascii=True, sort_keys=True)
+    test_case = LLMTestCase(
+        input=f"Scenario: {case.scenario}\nPrompt: {case.prompt}\nContext: {context_blob}",
+        actual_output=output.response,
+        expected_output=_build_expected_text(case),
+    )
+
+    accuracy_metric = GEval(
+        name="CriteriaCoverage",
+        criteria=(
+            "Score how well the actual output covers expected criteria and remediation quality. "
+            "Give high score when root cause, evidence, and actionable fix are all present."
+        ),
+        evaluation_params=[
+            LLMTestCaseParams.INPUT,
+            LLMTestCaseParams.ACTUAL_OUTPUT,
+            LLMTestCaseParams.EXPECTED_OUTPUT,
+        ],
+    )
+    groundedness_metric = GEval(
+        name="Groundedness",
+        criteria=(
+            "Score how grounded the answer is in the provided scenario and context. "
+            "Give low score when the answer introduces unsupported claims."
+        ),
+        evaluation_params=[
+            LLMTestCaseParams.INPUT,
+            LLMTestCaseParams.ACTUAL_OUTPUT,
+            LLMTestCaseParams.EXPECTED_OUTPUT,
+        ],
+    )
+
+    accuracy_metric.measure(test_case)
+    groundedness_metric.measure(test_case)
+
+    accuracy = round(max(0.0, min(1.0, float(getattr(accuracy_metric, "score", 0.0)))), 4)
+    groundedness = round(max(0.0, min(1.0, float(getattr(groundedness_metric, "score", 0.0)))), 4)
+    hallucination_rate = round(1.0 - groundedness, 4)
+
+    notes: list[str] = []
+    if getattr(accuracy_metric, "reason", ""):
+        notes.append(f"DeepEval accuracy reason: {accuracy_metric.reason}")
+    if getattr(groundedness_metric, "reason", ""):
+        notes.append(f"DeepEval groundedness reason: {groundedness_metric.reason}")
+    return accuracy, hallucination_rate, notes
+
+
+def evaluate_case(case: TestCase, output: AgentOutput, judge_backend: str = "heuristic") -> CaseEvaluation:
     response_text = _normalize(output.response)
     criterion_scores = [_score_expectation(expectation, response_text) for expectation in case.expected]
     weighted_total = sum(expectation.weight for expectation in case.expected) or 1.0
     weighted_score = 0.0
     for expectation, score_row in zip(case.expected, criterion_scores, strict=True):
         weighted_score += expectation.weight * float(score_row["score"])
-    accuracy = round(weighted_score / weighted_total, 4)
+    heuristic_accuracy = round(weighted_score / weighted_total, 4)
 
     tool_correctness, tool_analysis = _score_tool_calls(case, output)
-    hallucination_rate, hallucinated_sentences = _score_hallucination(case, output.response)
+    heuristic_hallucination_rate, hallucinated_sentences = _score_hallucination(case, output.response)
+
+    accuracy = heuristic_accuracy
+    hallucination_rate = heuristic_hallucination_rate
+    effective_backend = "heuristic"
+    backend_notes: list[str] = []
+    if judge_backend == "deepeval":
+        try:
+            accuracy, hallucination_rate, backend_notes = _score_with_deepeval(case, output)
+            effective_backend = "deepeval"
+        except Exception as exc:
+            effective_backend = "deepeval-fallback"
+            backend_notes.append(f"DeepEval unavailable, used heuristic fallback: {exc.__class__.__name__}: {exc}")
+
     latency_component = _latency_score(output.latency_ms, case.max_latency_ms)
 
     overall_score = (
@@ -143,8 +217,9 @@ def evaluate_case(case: TestCase, output: AgentOutput) -> CaseEvaluation:
         judge_notes.append(f"Missing expected tools: {', '.join(tool_analysis['missing'])}")
     if tool_analysis["unexpected"]:
         judge_notes.append(f"Unexpected tools: {', '.join(tool_analysis['unexpected'])}")
-    if hallucinated_sentences:
+    if effective_backend != "deepeval" and hallucinated_sentences:
         judge_notes.append(f"Potential hallucination sentences: {len(hallucinated_sentences)}")
+    judge_notes.extend(backend_notes)
     if math.isclose(accuracy, 1.0):
         judge_notes.append("All expected criteria were covered.")
 
@@ -152,6 +227,7 @@ def evaluate_case(case: TestCase, output: AgentOutput) -> CaseEvaluation:
         case_id=case.id,
         category=case.category,
         model_name=output.model_name,
+        judge_backend=effective_backend,
         accuracy=accuracy,
         hallucination_rate=hallucination_rate,
         tool_correctness=tool_correctness,
@@ -164,4 +240,3 @@ def evaluate_case(case: TestCase, output: AgentOutput) -> CaseEvaluation:
         response=output.response,
         tool_calls=output.tool_calls,
     )
-

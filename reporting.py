@@ -63,6 +63,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"- Cases file: `{report['cases_path']}`",
         f"- Total cases: {summary['total_cases']}",
         f"- Total models: {summary.get('total_models', 1)}",
+        f"- Judge backend usage: {summary.get('by_judge_backend', {})}",
         f"- Overall score: {_pct(overall['overall_score'])}",
         f"- Accuracy: {_pct(overall['accuracy'])}",
         f"- Hallucination rate: {_pct(overall['hallucination_rate'])}",
@@ -112,6 +113,7 @@ def render_markdown(report: dict[str, Any]) -> str:
                 f"### {result['case_id']} ({result['model_name']})",
                 "",
                 f"- Model: {result['model_name']}",
+                f"- Judge backend: {result['judge_backend']}",
                 f"- Category: {result['category']}",
                 f"- Score: {_pct(result['overall_score'])}",
                 f"- Accuracy: {_pct(result['accuracy'])}",
@@ -158,10 +160,18 @@ def render_html(report: dict[str, Any]) -> str:
         "</tr>"
         for row in summary.get("leaderboard", [])
     )
+    judge_backend_rows = "".join(
+        "<tr>"
+        f"<td>{escape(backend)}</td>"
+        f"<td>{count}</td>"
+        "</tr>"
+        for backend, count in summary.get("by_judge_backend", {}).items()
+    )
     case_rows = "".join(
         "<tr>"
         f"<td>{escape(result['case_id'])}</td>"
         f"<td>{escape(result['model_name'])}</td>"
+        f"<td>{escape(result['judge_backend'])}</td>"
         f"<td>{escape(result['category'])}</td>"
         f"<td>{_pct(result['overall_score'])}</td>"
         f"<td>{_pct(result['accuracy'])}</td>"
@@ -324,6 +334,19 @@ def render_html(report: dict[str, Any]) -> str:
     </section>
 
     <section class="section">
+      <h2>Judge Backend Usage</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Backend</th>
+            <th>Case count</th>
+          </tr>
+        </thead>
+        <tbody>{judge_backend_rows}</tbody>
+      </table>
+    </section>
+
+    <section class="section">
       <h2>Category Scores</h2>
       <table>
         <thead>
@@ -346,6 +369,7 @@ def render_html(report: dict[str, Any]) -> str:
           <tr>
             <th>Case</th>
             <th>Model</th>
+            <th>Judge backend</th>
             <th>Category</th>
             <th>Score</th>
             <th>Accuracy</th>

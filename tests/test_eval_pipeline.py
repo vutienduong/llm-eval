@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from agent_runner import build_runner
 from integrations import detect_integrations
@@ -41,6 +42,7 @@ class EvalPipelineTest(unittest.TestCase):
         self.assertGreater(summary["overall"]["tool_correctness"], 0.9)
         self.assertEqual(len(summary["leaderboard"]), 1)
         self.assertEqual(summary["leaderboard"][0]["model_name"], "demo-agent")
+        self.assertEqual(summary["by_judge_backend"], {"heuristic": 3})
 
         report = build_report_payload(
             project_name="LLM Eval Framework",
@@ -69,6 +71,18 @@ class EvalPipelineTest(unittest.TestCase):
         self.assertEqual(len(summary["leaderboard"]), 2)
         self.assertEqual(summary["leaderboard"][0]["rank"], 1)
         self.assertEqual(summary["leaderboard"][1]["rank"], 2)
+        self.assertEqual(summary["by_judge_backend"], {"heuristic": 6})
+
+    def test_deepeval_fallback_to_heuristic(self) -> None:
+        case = load_test_cases(ROOT / "test_cases.yaml")[0]
+        runner = build_runner("demo", model_name="demo-agent")
+        output = runner.run_case(case)
+
+        with patch("judge_model._score_with_deepeval", side_effect=RuntimeError("boom")):
+            result = evaluate_case(case, output, judge_backend="deepeval")
+
+        self.assertEqual(result.judge_backend, "deepeval-fallback")
+        self.assertTrue(any("fallback" in note.lower() for note in result.judge_notes))
 
 
 if __name__ == "__main__":

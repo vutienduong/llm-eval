@@ -58,6 +58,7 @@ class CaseEvaluation:
     case_id: str
     category: str
     model_name: str
+    judge_backend: str
     accuracy: float
     hallucination_rate: float
     tool_correctness: float
@@ -83,4 +84,3 @@ class IntegrationStatus:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
-

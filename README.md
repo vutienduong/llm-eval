@@ -89,6 +89,24 @@ llm-eval --cases test_cases.yaml --runner subprocess \
 
 The generated JSON/Markdown/HTML reports now include a model leaderboard.
 
+## Judge backend options (Phase 1)
+
+Default deterministic judge:
+
+```bash
+llm-eval --cases test_cases.yaml --judge heuristic
+```
+
+Optional LLM-as-a-judge mode:
+
+```bash
+pip install -e ".[judge-deepeval]"
+llm-eval --cases test_cases.yaml --judge deepeval
+```
+
+If DeepEval or required API credentials are unavailable, the pipeline falls back to
+heuristic scoring and marks case results as `deepeval-fallback`.
+
 ## Use your own agent
 
 Run the evaluator against a subprocess that reads a test-case payload on stdin and returns JSON on stdout:

@@ -8,6 +8,11 @@ dependencies = [
   "PyYAML>=6.0",
 ]
 
+[project.optional-dependencies]
+judge-deepeval = [
+  "deepeval>=1.4.0",
+]
+
 [project.scripts]
 llm-eval = "run_eval:main"
 
