@@ -71,6 +71,24 @@ pip install -e .
 llm-eval --cases test_cases.yaml
 ```
 
+## Multi-model comparison (Phase 1)
+
+Run multiple models in one evaluation by repeating `--model`:
+
+```bash
+llm-eval --cases test_cases.yaml --runner demo --model model-a --model model-b
+```
+
+Subprocess mode with per-model command override:
+
+```bash
+llm-eval --cases test_cases.yaml --runner subprocess \
+  --model model-a="python3 agents/agent_a.py" \
+  --model model-b="python3 agents/agent_b.py"
+```
+
+The generated JSON/Markdown/HTML reports now include a model leaderboard.
+
 ## Use your own agent
 
 Run the evaluator against a subprocess that reads a test-case payload on stdin and returns JSON on stdout:

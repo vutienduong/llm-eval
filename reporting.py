@@ -52,13 +52,17 @@ def write_report_artifacts(report: dict[str, Any], output_dir: str | Path) -> di
 
 def render_markdown(report: dict[str, Any]) -> str:
     summary = report["summary"]
-    overall = summary["overall"]
+    overall = summary.get("overall", {})
+    if not overall:
+        return "# Eval Report\n\nNo results available."
+
     lines = [
         "# Eval Report",
         "",
         f"- Generated at: {report['generated_at']}",
         f"- Cases file: `{report['cases_path']}`",
         f"- Total cases: {summary['total_cases']}",
+        f"- Total models: {summary.get('total_models', 1)}",
         f"- Overall score: {_pct(overall['overall_score'])}",
         f"- Accuracy: {_pct(overall['accuracy'])}",
         f"- Hallucination rate: {_pct(overall['hallucination_rate'])}",
@@ -66,11 +70,34 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"- Avg latency: {overall['latency_ms']:.2f} ms",
         f"- Avg cost: ${overall['cost_usd']:.4f}",
         "",
+    ]
+
+    leaderboard = summary.get("leaderboard", [])
+    if leaderboard:
+        lines.extend(
+            [
+                "## Model Leaderboard",
+                "",
+                "| Rank | Model | Score | Accuracy | Hallucination | Tool correctness | Latency (ms) | Cost (USD) |",
+                "| ---: | --- | ---: | ---: | ---: | ---: | ---: | ---: |",
+            ]
+        )
+        for row in leaderboard:
+            lines.append(
+                f"| {row['rank']} | {row['model_name']} | {_pct(row['overall_score'])} | "
+                f"{_pct(row['accuracy'])} | {_pct(row['hallucination_rate'])} | "
+                f"{_pct(row['tool_correctness'])} | {row['latency_ms']:.2f} | ${row['cost_usd']:.4f} |"
+            )
+        lines.append("")
+
+    lines.extend(
+        [
         "## By Category",
         "",
         "| Category | Score | Accuracy | Hallucination | Tool correctness |",
         "| --- | ---: | ---: | ---: | ---: |",
-    ]
+        ]
+    )
 
     for category, row in report["summary"]["by_category"].items():
         lines.append(
@@ -82,8 +109,9 @@ def render_markdown(report: dict[str, Any]) -> str:
     for result in report["results"]:
         lines.extend(
             [
-                f"### {result['case_id']}",
+                f"### {result['case_id']} ({result['model_name']})",
                 "",
+                f"- Model: {result['model_name']}",
                 f"- Category: {result['category']}",
                 f"- Score: {_pct(result['overall_score'])}",
                 f"- Accuracy: {_pct(result['accuracy'])}",
@@ -105,7 +133,8 @@ def render_markdown(report: dict[str, Any]) -> str:
 
 
 def render_html(report: dict[str, Any]) -> str:
-    overall = report["summary"]["overall"]
+    summary = report["summary"]
+    overall = summary["overall"]
     category_rows = "".join(
         "<tr>"
         f"<td>{escape(category)}</td>"
@@ -116,9 +145,23 @@ def render_html(report: dict[str, Any]) -> str:
         "</tr>"
         for category, row in report["summary"]["by_category"].items()
     )
+    leaderboard_rows = "".join(
+        "<tr>"
+        f"<td>{row['rank']}</td>"
+        f"<td>{escape(row['model_name'])}</td>"
+        f"<td>{_pct(row['overall_score'])}</td>"
+        f"<td>{_pct(row['accuracy'])}</td>"
+        f"<td>{_pct(row['hallucination_rate'])}</td>"
+        f"<td>{_pct(row['tool_correctness'])}</td>"
+        f"<td>{row['latency_ms']:.2f}</td>"
+        f"<td>${row['cost_usd']:.4f}</td>"
+        "</tr>"
+        for row in summary.get("leaderboard", [])
+    )
     case_rows = "".join(
         "<tr>"
         f"<td>{escape(result['case_id'])}</td>"
+        f"<td>{escape(result['model_name'])}</td>"
         f"<td>{escape(result['category'])}</td>"
         f"<td>{_pct(result['overall_score'])}</td>"
         f"<td>{_pct(result['accuracy'])}</td>"
@@ -258,6 +301,26 @@ def render_html(report: dict[str, Any]) -> str:
       <article class="card"><span class="card-label">Hallucination</span><span class="card-value">{_pct(overall['hallucination_rate'])}</span></article>
       <article class="card"><span class="card-label">Tool correctness</span><span class="card-value">{_pct(overall['tool_correctness'])}</span></article>
       <article class="card"><span class="card-label">Avg latency</span><span class="card-value">{overall['latency_ms']:.0f} ms</span></article>
+      <article class="card"><span class="card-label">Models compared</span><span class="card-value">{summary.get('total_models', 1)}</span></article>
+    </section>
+
+    <section class="section">
+      <h2>Model Leaderboard</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Model</th>
+            <th>Score</th>
+            <th>Accuracy</th>
+            <th>Hallucination</th>
+            <th>Tool correctness</th>
+            <th>Latency (ms)</th>
+            <th>Cost (USD)</th>
+          </tr>
+        </thead>
+        <tbody>{leaderboard_rows}</tbody>
+      </table>
     </section>
 
     <section class="section">
@@ -282,6 +345,7 @@ def render_html(report: dict[str, Any]) -> str:
         <thead>
           <tr>
             <th>Case</th>
+            <th>Model</th>
             <th>Category</th>
             <th>Score</th>
             <th>Accuracy</th>
@@ -313,4 +377,3 @@ def render_html(report: dict[str, Any]) -> str:
 </body>
 </html>
 """
-
